@@ -97,7 +97,7 @@ create table if not exists public.invitations (
   email text not null,
   role public.organization_role not null default 'VIEWER',
   status public.invitation_status not null default 'PENDING',
-  token text not null default encode(gen_random_bytes(32), 'hex'),
+  token text not null default encode(extensions.gen_random_bytes(32), 'hex'),
   invited_by uuid references auth.users (id) on delete set null,
   expires_at timestamptz not null default (now() + interval '7 days'),
   accepted_at timestamptz,
