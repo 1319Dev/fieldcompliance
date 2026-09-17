@@ -1,0 +1,3 @@
+-- No seed data in Phase 1. Do not insert tenant names from other products.
+-- Bootstrap a platform admin in a hosted project with a privileged SQL session:
+--   insert into public.platform_admins (user_id) values ('<auth-user-uuid>');
