@@ -28,12 +28,17 @@ describe("no service role in client/application code", () => {
     const offenders: string[] = [];
 
     for (const file of files) {
+      const relative = path.relative(ROOT, file);
+      if (relative === "lib/env.ts") {
+        // Guard file must mention service_role so it can reject it.
+        continue;
+      }
       const source = readFileSync(file, "utf8");
       const code = source
         .replace(/\/\*[\s\S]*?\*\//g, "")
         .replace(/\/\/.*$/gm, "");
       if (/service[_-]role/i.test(code)) {
-        offenders.push(path.relative(ROOT, file));
+        offenders.push(relative);
       }
     }
 
@@ -43,5 +48,11 @@ describe("no service role in client/application code", () => {
   it("does not expose a NEXT_PUBLIC service role variable", () => {
     const example = readFileSync(path.join(ROOT, ".env.example"), "utf8");
     expect(example).not.toMatch(/NEXT_PUBLIC_.*SERVICE_ROLE/i);
+  });
+
+  it("keeps a runtime guard against service_role keys in lib/env.ts", () => {
+    const source = readFileSync(path.join(ROOT, "lib/env.ts"), "utf8");
+    expect(source).toMatch(/service_role/);
+    expect(source).toMatch(/assertNotServiceRole/);
   });
 });

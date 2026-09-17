@@ -16,54 +16,80 @@ import type { Database } from "@/lib/supabase/database.types";
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient<Database>(
-    getSupabaseUrl(),
-    getSupabasePublishableKey(),
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet, headers) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
-          Object.entries(headers).forEach(([key, value]) =>
-            supabaseResponse.headers.set(key, value),
-          );
+  try {
+    const supabase = createServerClient<Database>(
+      getSupabaseUrl(),
+      getSupabasePublishableKey(),
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet, headers) {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value),
+            );
+            supabaseResponse = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options),
+            );
+            Object.entries(headers).forEach(([key, value]) =>
+              supabaseResponse.headers.set(key, value),
+            );
+          },
         },
       },
-    },
-  );
+    );
 
-  const { data } = await supabase.auth.getClaims();
-  const isAuthenticated = Boolean(data?.claims);
+    const { data } = await supabase.auth.getClaims();
+    const isAuthenticated = Boolean(data?.claims);
 
-  if (!isAuthenticated && isProtectedPath(request.nextUrl.pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = LOGIN_PATH;
-    url.searchParams.set("next", request.nextUrl.pathname);
-    const redirectResponse = NextResponse.redirect(url);
-    redirectResponse.cookies.setAll(supabaseResponse.cookies.getAll());
-    copyCacheHeaders(supabaseResponse, redirectResponse);
-    return redirectResponse;
+    if (!isAuthenticated && isProtectedPath(request.nextUrl.pathname)) {
+      return redirectWithSession(request, supabaseResponse, LOGIN_PATH, {
+        next: request.nextUrl.pathname,
+      });
+    }
+
+    if (isAuthenticated && isAuthEntryPath(request.nextUrl.pathname)) {
+      return redirectWithSession(request, supabaseResponse, APP_PATH);
+    }
+
+    return supabaseResponse;
+  } catch {
+    if (isProtectedPath(request.nextUrl.pathname)) {
+      const url = request.nextUrl.clone();
+      url.pathname = LOGIN_PATH;
+      url.searchParams.set("next", request.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
   }
+}
 
-  if (isAuthenticated && isAuthEntryPath(request.nextUrl.pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = APP_PATH;
-    url.search = "";
-    const redirectResponse = NextResponse.redirect(url);
-    redirectResponse.cookies.setAll(supabaseResponse.cookies.getAll());
-    copyCacheHeaders(supabaseResponse, redirectResponse);
-    return redirectResponse;
+function redirectWithSession(
+  request: NextRequest,
+  supabaseResponse: NextResponse,
+  pathname: string,
+  query?: Record<string, string>,
+) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      url.searchParams.set(key, value);
+    }
   }
+  const redirectResponse = NextResponse.redirect(url);
+  copyCookies(supabaseResponse, redirectResponse);
+  copyCacheHeaders(supabaseResponse, redirectResponse);
+  return redirectResponse;
+}
 
-  return supabaseResponse;
+function copyCookies(from: NextResponse, to: NextResponse) {
+  for (const cookie of from.cookies.getAll()) {
+    to.cookies.set(cookie);
+  }
 }
 
 function copyCacheHeaders(from: NextResponse, to: NextResponse) {

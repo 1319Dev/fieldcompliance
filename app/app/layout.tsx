@@ -11,10 +11,14 @@ export default async function AppLayout({
 }: {
   children: ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: { email?: string | null } | null = null;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    redirect(LOGIN_PATH);
+  }
 
   if (!user) {
     redirect(LOGIN_PATH);

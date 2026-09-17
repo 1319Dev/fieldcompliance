@@ -166,9 +166,7 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: {
-      // Helpers live in private schema and are not exposed through the Data API.
-    };
+    Functions: Record<string, never>;
     Enums: {
       organization_role: OrganizationRole;
       invitation_status: InvitationStatus;
