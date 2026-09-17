@@ -28,7 +28,7 @@ pnpm dev
 | `pnpm dev` | Start the development server |
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | TypeScript (`tsc --noEmit`) |
-| `pnpm test` | Unit / policy tests |
+| `pnpm test` | Unit / policy tests (`vitest run`) |
 | `pnpm build` | Production build |
 
 ## Phase 1 scope
